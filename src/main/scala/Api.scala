@@ -7,11 +7,13 @@ import spray.json.DefaultJsonProtocol
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-case class Ad(id: String, url: String, imageUrls: List[String], age: Int, title: String, text: String, estimatedAge: Int)
+case class Ad(id: String, url: String, imageUrls: List[String], age: Int, title: String, text: String, estimatedAge: Double)
 
 object AdJsonProtocol extends DefaultJsonProtocol {
   implicit val adFormat = jsonFormat7(Ad)
 }
+
+import AdJsonProtocol._
 
 object Api {
   lazy val IN_DOCKER: Boolean = !System.getProperty("os.name").contains("Mac OS X")
@@ -23,16 +25,14 @@ object Api {
   val timeout = 5.seconds
   //Spray needs an implicit ActorSystem and ExecutionContext
   implicit val system = ActorSystem("apiClient")
-  val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
-
   import system.dispatcher
+
+  val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
 
   val pipelineAd: HttpRequest => Future[Ad] = (
     sendReceive
       ~> unmarshal[Ad]
     )
-
-  import AdJsonProtocol._
 
   def patchAd(ad: Ad): Future[HttpResponse] = pipeline(Patch(s"$apiLocation/ad/$ad.id"))
 
