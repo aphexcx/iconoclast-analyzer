@@ -29,7 +29,6 @@ case class FaceAttributes(age: Double)
 
 case class PostParams(url: String)
 
-import FaceAttributesJsonProtocol._
 
 object FaceAttributesJsonProtocol extends DefaultJsonProtocol {
   implicit val FaceAttributesUnmarshaller = new FromResponseUnmarshaller[FaceAttributes] {
@@ -43,6 +42,8 @@ object FaceAttributesJsonProtocol extends DefaultJsonProtocol {
     }
   }
 }
+
+import FaceAttributesJsonProtocol._
 
 object PostParamsJsonProtocol extends DefaultJsonProtocol {
   implicit val PostParamsFormat = jsonFormat1(PostParams)
