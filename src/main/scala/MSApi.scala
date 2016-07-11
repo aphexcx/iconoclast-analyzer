@@ -1,6 +1,7 @@
 import akka.actor.ActorSystem
 import spray.client.pipelining._
 import spray.http._
+import spray.httpx.PipelineException
 import spray.httpx.unmarshalling.{FromResponseUnmarshaller, MalformedContent}
 import spray.json.DefaultJsonProtocol
 import spray.json.lenses.JsonLenses._
@@ -49,6 +50,10 @@ object PostParamsJsonProtocol extends DefaultJsonProtocol {
   implicit val PostParamsFormat = jsonFormat1(PostParams)
 }
 
+
+import PostParamsJsonProtocol._
+import spray.httpx.SprayJsonSupport._
+
 object MSApi {
   val apiLocation = "https://api.projectoxford.ai/face/v1.0"
   val timeout = 5.seconds
@@ -79,7 +84,7 @@ object MSApi {
     )
 
   def estimateAge(image: Image): Future[Double] = {
-    getAge(image.url).map(_.age)
+    getAge(image.url).map(_.age).recover { case t: PipelineException => -1.0 }
   }
 
   //returnFaceId=true&returnFaceLandmarks=false&returnFaceAttributes=age
@@ -92,8 +97,6 @@ object MSApi {
       + "?returnFaceId=true&returnFaceLandmarks=false&returnFaceAttributes=age",
       PostParams(imageUrl)))
 
-  import PostParamsJsonProtocol._
-  import spray.httpx.SprayJsonSupport._
 
   def futureToFutureTry[T](f: Future[T]): Future[Try[T]] = {
     f.map(Success(_)).recover({ case x => Failure(x) })

@@ -5,12 +5,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 object Main extends App {
 
-  Api.getUnprocessedImage.flatMap(image =>
-    MSApi.estimateAge(image)
-      .map(a => image.copy(estimatedAge = a))
-      .flatMap(Api.patchImage))
-    .onComplete(r =>
-      println(r)
-    )
+  for (i <- 1 to 10) {
+    Api.getUnprocessedImage.flatMap(image =>
+      MSApi.estimateAge(image)
+        .map(a => image.copy(estimatedAge = a))
+        .flatMap(Api.patchImage))
+      .onComplete(r =>
+        println(r)
+      )
+  }
 
 }
