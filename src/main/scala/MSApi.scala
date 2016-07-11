@@ -7,6 +7,7 @@ import spray.json.lenses.JsonLenses._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 case class FaceDetectResponse(faceId: String, faceRectangle: FaceRectangle, faceAttributes: FaceAttributes)
 
@@ -25,6 +26,11 @@ case class FaceAttributes(age: Double)
 //object FaceAttributesJsonProtocol extends DefaultJsonProtocol {
 //  implicit val FaceAttributesFormat = jsonFormat1(FaceAttributes)
 //}
+
+case class PostParams(url: String)
+
+import FaceAttributesJsonProtocol._
+
 object FaceAttributesJsonProtocol extends DefaultJsonProtocol {
   implicit val FaceAttributesUnmarshaller = new FromResponseUnmarshaller[FaceAttributes] {
     implicit val FaceAttributesFormat = jsonFormat1(FaceAttributes)
@@ -33,43 +39,72 @@ object FaceAttributesJsonProtocol extends DefaultJsonProtocol {
       Right(response.entity.asString.extract[FaceAttributes](element(0) / 'faceAttributes))
     } catch {
       case x: Throwable =>
-        Left(MalformedContent("Could not unmarshal user status.", x))
+        Left(MalformedContent("Failed to unmarshal Face Attributes from JSON. Maybe there's no face here?", x))
     }
   }
 }
 
-import FaceAttributesJsonProtocol._
+object PostParamsJsonProtocol extends DefaultJsonProtocol {
+  implicit val PostParamsFormat = jsonFormat1(PostParams)
+}
 
 object MSApi {
-  val apiLocation = "https://api.projectoxford.ai/face/v1.0/"
+  val apiLocation = "https://api.projectoxford.ai/face/v1.0"
   val timeout = 5.seconds
 
   //Spray needs an implicit ActorSystem and ExecutionContext
   implicit val system = ActorSystem("apiClient")
 
-  //  import FaceDetectResponseJsonProtocol._
   import system.dispatcher
 
+
+  val logRequest: HttpRequest => HttpRequest = { r =>
+    println(r.toString); r
+  }
+  val logResponse: HttpResponse => HttpResponse = { r =>
+    println(r.toString); r
+  }
+
+
   val pipeline: HttpRequest => Future[FaceAttributes] = (
+    //    addHeader("Content-Type", "application/json")
     addHeader("Ocp-Apim-Subscription-Key", "03e28955da2c4b7aa48f30527dd275ed")
+      ~> logRequest
+
       ~> sendReceive
+      ~> logResponse
+
       ~> unmarshal[FaceAttributes]
     )
 
   def estimateAge(ad: Ad): Future[Double] = {
-    val ages: List[Future[Double]] = ad.imageUrls.map(getAge(_).map(_.age))
-
+    val ages: List[Future[Double]] = ad.imageUrls
+      .map(getAge(_)
+        .map(_.age))
+      .map(futureToFutureTry) // convert failed futures to Failure[T]
+      //      .map(_.collect{case Success(x)=> x})
+      .map(_.filter(_.isSuccess).map(_.get))
     // Average the ages of the images.
     Future.reduce(ages)(_ + _) map (_ / ad.imageUrls.length)
   }
 
+  def futureToFutureTry[T](f: Future[T]): Future[Try[T]] = {
+    f.map(Success(_)).recover({ case x => Failure(x) })
+  }
+
+  import PostParamsJsonProtocol._
+  import spray.httpx.SprayJsonSupport._
+
   //returnFaceId=true&returnFaceLandmarks=false&returnFaceAttributes=age
+  //FormData(Seq(
+  //  "returnFaceId" -> "true",
+  //  "returnFaceLandmarks" -> "false",
+  //  "returnFaceAttributes" -> "age"))
   def getAge(imageUrl: String): Future[FaceAttributes] =
-    pipeline(Post(s"$apiLocation/detect", FormData(Seq(
-      "returnFaceId" -> "true",
-      "returnFaceLandmarks" -> "false",
-      "returnFaceAttributes" -> "age")
-    )))
+    pipeline(Post(s"$apiLocation/detect"
+      + "?returnFaceId=true&returnFaceLandmarks=false&returnFaceAttributes=age",
+      PostParams(imageUrl)))
+
 
 }
 

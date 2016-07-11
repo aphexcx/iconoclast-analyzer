@@ -1,19 +1,11 @@
+import AdJsonProtocol._
 import akka.actor.ActorSystem
 import spray.client.pipelining._
 import spray.http._
 import spray.httpx.SprayJsonSupport._
-import spray.json.DefaultJsonProtocol
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-
-case class Ad(id: String, url: String, imageUrls: List[String], age: Int, title: String, text: String, estimatedAge: Double)
-
-object AdJsonProtocol extends DefaultJsonProtocol {
-  implicit val adFormat = jsonFormat7(Ad)
-}
-
-import AdJsonProtocol._
 
 object Api {
   lazy val IN_DOCKER: Boolean = !System.getProperty("os.name").contains("Mac OS X")
@@ -25,16 +17,33 @@ object Api {
   val timeout = 5.seconds
   //Spray needs an implicit ActorSystem and ExecutionContext
   implicit val system = ActorSystem("apiClient")
+
   import system.dispatcher
 
-  val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
+  val logRequest: HttpRequest => HttpRequest = { r =>
+    println(r.toString); r
+  }
+  val logResponse: HttpResponse => HttpResponse = { r =>
+    println(r.toString); r
+  }
+
+  val pipeline: HttpRequest => Future[HttpResponse] = (
+    logRequest
+      ~> sendReceive
+      ~> logResponse
+
+    )
 
   val pipelineAd: HttpRequest => Future[Ad] = (
-    sendReceive
+    logRequest
+
+      ~> sendReceive
+      ~> logResponse
+
       ~> unmarshal[Ad]
     )
 
-  def patchAd(ad: Ad): Future[HttpResponse] = pipeline(Patch(s"$apiLocation/ad/$ad.id"))
+  def patchAd(ad: Ad): Future[HttpResponse] = pipeline(Patch(s"$apiLocation/ad/${ad._id.$oid}", ad))
 
   def getUnprocessedAd: Future[Ad] = pipelineAd(Get(s"$apiLocation/ad/unprocessed"))
 }
