@@ -1,10 +1,10 @@
 import spray.json.DefaultJsonProtocol
 
-case class Ad(_id: MongoObjectId, url: String, imageUrls: List[String], age: Int, title: String, text: String)
+case class Image(_id: MongoObjectId, url: String, estimatedAge: Double, adId: MongoObjectId)
 
 case class MongoObjectId($oid: String)
 
 object AdJsonProtocol extends DefaultJsonProtocol {
   implicit val mongoOidFormat = jsonFormat1(MongoObjectId)
-  implicit val adFormat = jsonFormat6(Ad)
+  implicit val adFormat = jsonFormat4(Image)
 }

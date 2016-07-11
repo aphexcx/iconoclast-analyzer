@@ -78,23 +78,9 @@ object MSApi {
       ~> unmarshal[FaceAttributes]
     )
 
-  def estimateAge(ad: Ad): Future[Double] = {
-    val ages: List[Future[Double]] = ad.imageUrls
-      .map(getAge(_)
-        .map(_.age))
-      .map(futureToFutureTry) // convert failed futures to Failure[T]
-      //      .map(_.collect{case Success(x)=> x})
-      .map(_.filter(_.isSuccess).map(_.get))
-    // Average the ages of the images.
-    Future.reduce(ages)(_ + _) map (_ / ad.imageUrls.length)
+  def estimateAge(image: Image): Future[Double] = {
+    getAge(image.url).map(_.age)
   }
-
-  def futureToFutureTry[T](f: Future[T]): Future[Try[T]] = {
-    f.map(Success(_)).recover({ case x => Failure(x) })
-  }
-
-  import PostParamsJsonProtocol._
-  import spray.httpx.SprayJsonSupport._
 
   //returnFaceId=true&returnFaceLandmarks=false&returnFaceAttributes=age
   //FormData(Seq(
@@ -105,6 +91,13 @@ object MSApi {
     pipeline(Post(s"$apiLocation/detect"
       + "?returnFaceId=true&returnFaceLandmarks=false&returnFaceAttributes=age",
       PostParams(imageUrl)))
+
+  import PostParamsJsonProtocol._
+  import spray.httpx.SprayJsonSupport._
+
+  def futureToFutureTry[T](f: Future[T]): Future[Try[T]] = {
+    f.map(Success(_)).recover({ case x => Failure(x) })
+  }
 
 
 }

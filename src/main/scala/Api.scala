@@ -31,19 +31,16 @@ object Api {
     logRequest
       ~> sendReceive
       ~> logResponse
-
     )
 
-  val pipelineAd: HttpRequest => Future[Ad] = (
+  val pipelineToImage: HttpRequest => Future[Image] = (
     logRequest
-
       ~> sendReceive
       ~> logResponse
-
-      ~> unmarshal[Ad]
+      ~> unmarshal[Image]
     )
 
-  def patchAd(ad: Ad): Future[HttpResponse] = pipeline(Patch(s"$apiLocation/ad/${ad._id.$oid}", ad))
+  def patchImage(image: Image): Future[HttpResponse] = pipeline(Patch(s"$apiLocation/image/${image._id.$oid}", image))
 
-  def getUnprocessedAd: Future[Ad] = pipelineAd(Get(s"$apiLocation/ad/unprocessed"))
+  def getUnprocessedImage: Future[Image] = pipelineToImage(Get(s"$apiLocation/image/unprocessed"))
 }
