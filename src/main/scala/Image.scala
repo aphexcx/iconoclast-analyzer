@@ -4,7 +4,7 @@ case class Image(_id: MongoObjectId, url: String, estimatedAge: Double, adId: Mo
 
 case class MongoObjectId($oid: String)
 
-object AdJsonProtocol extends DefaultJsonProtocol {
+object ImageJsonProtocol extends DefaultJsonProtocol {
   implicit val mongoOidFormat = jsonFormat1(MongoObjectId)
-  implicit val adFormat = jsonFormat4(Image)
+  implicit val imageFormat = jsonFormat4(Image)
 }

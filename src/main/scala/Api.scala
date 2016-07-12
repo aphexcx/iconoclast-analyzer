@@ -1,4 +1,4 @@
-import AdJsonProtocol._
+import ImageJsonProtocol._
 import akka.actor.ActorSystem
 import spray.client.pipelining._
 import spray.http._
