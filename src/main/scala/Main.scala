@@ -5,14 +5,20 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 object Main extends App {
 
-  for (i <- 1 to 10) {
-    Api.getUnprocessedImage.flatMap(image =>
-      MSApi.estimateAge(image)
-        .map(a => image.copy(estimatedAge = a))
-        .flatMap(Api.patchImage))
-      .onComplete(r =>
-        println(r)
-      )
+  val REQUESTS_PER_MINUTE: Int = 20
+
+  while (true) {
+    for (i <- 1 to REQUESTS_PER_MINUTE) {
+      Api.getUnprocessedImage.flatMap(image =>
+        MSApi.estimateAge(image)
+          .map(a => image.copy(estimatedAge = a))
+          .flatMap(Api.patchImage))
+        .onComplete { r =>
+          println(r)
+          if (i == REQUESTS_PER_MINUTE) println("Sleeping for 1 minute because of rate limiting...")
+        }
+    }
+    Thread.sleep(62 * 1000)
   }
 
 }
